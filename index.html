@@ -574,29 +574,63 @@
     try {
         showLoading();
         
-        console.log('Loading ALL workflows from API...');
+        console.log('Loading ALL workflows from API in batches...');
         
-        // Load all workflows with higher limit
-        const [workflowsResponse, statsResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/workflows?per_page=2100`), // Request all workflows
-            fetch(`${API_BASE_URL}/stats`)
-        ]);
-
-        if (!workflowsResponse.ok || !statsResponse.ok) {
-            throw new Error('Failed to fetch data from API');
+        // Get stats first to know how many workflows exist
+        const statsResponse = await fetch(`${API_BASE_URL}/stats`);
+        if (!statsResponse.ok) throw new Error('Failed to fetch stats');
+        const statsData = await statsResponse.json();
+        
+        console.log('Total workflows available:', statsData.total);
+        
+        // Load workflows in batches of 100
+        const batchSize = 100;
+        const totalWorkflows = statsData.total;
+        const totalPages = Math.ceil(totalWorkflows / batchSize);
+        
+        let allWorkflowsData = [];
+        
+        // Load all pages in parallel (but limit to avoid overwhelming the server)
+        const maxConcurrent = 5; // Load 5 pages at a time
+        
+        for (let startPage = 1; startPage <= totalPages; startPage += maxConcurrent) {
+            const endPage = Math.min(startPage + maxConcurrent - 1, totalPages);
+            
+            console.log(`Loading pages ${startPage}-${endPage} of ${totalPages}...`);
+            
+            // Create promises for this batch of pages
+            const pagePromises = [];
+            for (let page = startPage; page <= endPage; page++) {
+                pagePromises.push(
+                    fetch(`${API_BASE_URL}/workflows?page=${page}&per_page=${batchSize}`)
+                        .then(r => r.json())
+                );
+            }
+            
+            // Wait for this batch to complete
+            const pageResults = await Promise.all(pagePromises);
+            
+            // Combine results
+            pageResults.forEach(pageData => {
+                const workflows = pageData.workflows || pageData || [];
+                allWorkflowsData.push(...workflows);
+            });
+            
+            // Update progress
+            const loaded = allWorkflowsData.length;
+            const percentage = Math.round((loaded / totalWorkflows) * 100);
+            console.log(`Progress: ${loaded}/${totalWorkflows} workflows (${percentage}%)`);
+            
+            // Add a small delay to be nice to the server
+            if (startPage + maxConcurrent <= totalPages) {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second pause
+            }
         }
 
-        const workflowsData = await workflowsResponse.json();
-        const statsData = await statsResponse.json();
-
-        console.log('Received workflows:', workflowsData.workflows?.length || workflowsData.length || 0);
-        console.log('Stats:', statsData);
-
-        // Handle different API response formats
-        const workflows = workflowsData.workflows || workflowsData || [];
+        console.log('All workflows loaded:', allWorkflowsData.length);
 
         // Transform API data to our format
-        allWorkflows = workflows.map(workflow => ({
+        allWorkflows = allWorkflowsData.map(workflow => ({
             id: workflow.id || Math.random(),
             filename: workflow.filename || 'unknown.json',
             name: workflow.name || transformFilename(workflow.filename || 'Unknown Workflow'),
@@ -614,7 +648,7 @@
         updateStats(statsData);
         renderWorkflows();
         
-        console.log('Successfully loaded', allWorkflows.length, 'workflows');
+        console.log('Successfully loaded', allWorkflows.length, 'workflows - search and filtering now work on ALL data!');
         
     } catch (error) {
         console.error('Failed to load real data:', error);
