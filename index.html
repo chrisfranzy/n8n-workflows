@@ -640,7 +640,7 @@
             complexity: workflow.complexity || determineComplexity(workflow.node_count || 0),
             node_count: workflow.node_count || 0,
             integrations: parseIntegrations(workflow.integrations),
-            category: workflow.category || inferCategory(parseIntegrations(workflow.integrations)),
+            category: workflow.category || 'Uncategorized',
             analyzed_at: workflow.analyzed_at
         }));
 
