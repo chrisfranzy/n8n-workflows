@@ -627,7 +627,7 @@
         let currentPage = 1;
         let totalPages = 1;
         const itemsPerPage = 20;
-        const API_BASE_URL = '/api';
+        const API_BASE_URL = 'https://n8n-workflows-production-a6f4.up.railway.app/api';
 
         // API Connection Functions
         async function connectToAPI() {
@@ -650,7 +650,7 @@
             } catch (error) {
                 console.error('Failed to connect to API:', error);
                 updateApiStatus('disconnected');
-                showError('Could not connect to API. Make sure the server is running on /api');
+                showError('Could not connect to API. Make sure the server is running on localhost:8000');
             }
         }
 
