@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>n8n Workflows Explorer - Real Integration</title>
+    <title>n8n Workflows Explorer - Live</title>
     <style>
         * {
             margin: 0;
@@ -66,7 +66,7 @@
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
-        .api-status.demo {
+        .api-status.connecting {
             background: rgba(251, 191, 36, 0.2);
             color: #d97706;
             border: 1px solid rgba(251, 191, 36, 0.3);
@@ -339,11 +339,6 @@
             color: white;
         }
 
-        .btn-warning {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-        }
-
         .no-results {
             text-align: center;
             padding: 60px 20px;
@@ -414,77 +409,6 @@
             color: #333;
         }
 
-        .setup-instructions {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-
-        .setup-instructions h3 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-        }
-
-        .setup-step {
-            margin-bottom: 15px;
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-        }
-
-        .setup-step h4 {
-            color: #333;
-            margin-bottom: 8px;
-            font-size: 1.1rem;
-        }
-
-        .setup-step code {
-            background: #e2e8f0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 14px;
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 30px;
-            color: white;
-        }
-
-        .pagination button {
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .pagination button:hover:not(:disabled) {
-            background: rgba(255,255,255,0.3);
-        }
-
-        .pagination button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .pagination .current-page {
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            font-weight: 600;
-        }
-
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -498,7 +422,7 @@
                 grid-template-columns: 1fr;
             }
             
-            .controls, .setup-instructions {
+            .controls {
                 padding: 20px;
             }
             
@@ -518,31 +442,7 @@
             <h1>🔗 n8n Workflows Explorer</h1>
             <p>Discover and explore 2,000+ automation workflows from the community</p>
             <div id="apiStatus" class="api-status disconnected">
-                🔴 API Disconnected - Using Demo Mode
-            </div>
-        </div>
-
-        <div class="setup-instructions" id="setupInstructions">
-            <h3>🚀 Setup Instructions</h3>
-            <div class="setup-step">
-                <h4>Step 1: Clone the Repository</h4>
-                <p>Clone the n8n-workflows repository to your local machine:</p>
-                <code>git clone https://github.com/Zie619/n8n-workflows.git</code>
-            </div>
-            <div class="setup-step">
-                <h4>Step 2: Install Dependencies</h4>
-                <p>Navigate to the repository directory and install Python dependencies:</p>
-                <code>cd n8n-workflows && pip install -r requirements.txt</code>
-            </div>
-            <div class="setup-step">
-                <h4>Step 3: Start the API Server</h4>
-                <p>Start the FastAPI backend server:</p>
-                <code>python run.py</code>
-                <p style="margin-top: 8px;">The API will be available at <code>http://localhost:8000</code></p>
-            </div>
-            <div class="setup-step">
-                <h4>Step 4: Connect to Live Data</h4>
-                <p>Once the API is running, click "Connect to API" below to load real workflow data.</p>
+                🔴 API Disconnected - Connecting...
             </div>
         </div>
 
@@ -552,9 +452,6 @@
                 <div class="action-buttons">
                     <button class="btn btn-success" id="connectApiBtn" onclick="connectToAPI()">
                         🔗 Connect to API
-                    </button>
-                    <button class="btn btn-warning" onclick="loadDemoData()">
-                        📊 Demo Mode
                     </button>
                     <button class="btn btn-secondary" onclick="refreshData()">
                         🔄 Refresh
@@ -604,12 +501,10 @@
         <div id="workflowsContainer">
             <div class="loading">
                 <div class="spinner"></div>
-                <h3>Ready to Connect</h3>
-                <p>Click "Connect to API" to load real workflow data, or use "Demo Mode" to explore the interface</p>
+                <h3>Connecting to API...</h3>
+                <p>Loading 2,000+ workflows from Railway...</p>
             </div>
         </div>
-
-        <div class="pagination" id="pagination" style="display: none;"></div>
     </div>
 
     <!-- Modal for workflow details -->
@@ -634,14 +529,29 @@
             updateApiStatus('connecting');
             
             try {
-                // Test API connection
-                const response = await fetch(`${API_BASE_URL}/stats`);
-                if (!response.ok) throw new Error('API not responding');
+                console.log('Attempting to connect to:', `${API_BASE_URL}/stats`);
+                
+                // Test API connection with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                
+                const response = await fetch(`${API_BASE_URL}/stats`, {
+                    signal: controller.signal,
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) throw new Error(`API responded with status ${response.status}`);
                 
                 const stats = await response.json();
+                console.log('API Stats received:', stats);
+                
                 apiConnected = true;
                 updateApiStatus('connected');
-                hideSetupInstructions();
                 
                 // Load real data
                 await loadRealData();
@@ -650,7 +560,13 @@
             } catch (error) {
                 console.error('Failed to connect to API:', error);
                 updateApiStatus('disconnected');
-                showError('Could not connect to API. Make sure the server is running on localhost:8000');
+                
+                // Show detailed error message
+                const errorMsg = error.name === 'AbortError' 
+                    ? 'Connection timed out. The API might be starting up, please try again in a few moments.'
+                    : `Could not connect to API: ${error.message}`;
+                    
+                showError(errorMsg);
             }
         }
 
@@ -658,21 +574,26 @@
             try {
                 showLoading();
                 
+                console.log('Loading workflows from API...');
+                
                 // Load workflows and stats
                 const [workflowsResponse, statsResponse] = await Promise.all([
-                    fetch(`${API_BASE_URL}/workflows`),
+                    fetch(`${API_BASE_URL}/workflows?per_page=100`),
                     fetch(`${API_BASE_URL}/stats`)
                 ]);
 
                 if (!workflowsResponse.ok || !statsResponse.ok) {
-                    throw new Error('Failed to fetch data');
+                    throw new Error('Failed to fetch data from API');
                 }
 
                 const workflowsData = await workflowsResponse.json();
                 const statsData = await statsResponse.json();
 
+                console.log('Received workflows:', workflowsData.workflows?.length || 0);
+                console.log('Stats:', statsData);
+
                 // Transform API data to our format
-                allWorkflows = workflowsData.map(workflow => ({
+                allWorkflows = (workflowsData.workflows || []).map(workflow => ({
                     id: workflow.id,
                     filename: workflow.filename,
                     name: workflow.name || transformFilename(workflow.filename),
@@ -681,7 +602,8 @@
                     trigger_type: workflow.trigger_type || 'Manual',
                     complexity: workflow.complexity || determineComplexity(workflow.node_count),
                     node_count: workflow.node_count || 0,
-                    integrations: workflow.integrations ? JSON.parse(workflow.integrations) : [],
+                    integrations: Array.isArray(workflow.integrations) ? workflow.integrations : 
+                                 (typeof workflow.integrations === 'string' ? JSON.parse(workflow.integrations || '[]') : []),
                     category: inferCategory(workflow.integrations),
                     analyzed_at: workflow.analyzed_at
                 }));
@@ -690,9 +612,11 @@
                 updateStats(statsData);
                 renderWorkflows();
                 
+                console.log('Successfully loaded', allWorkflows.length, 'workflows');
+                
             } catch (error) {
                 console.error('Failed to load real data:', error);
-                showError('Failed to load workflow data from API');
+                showError(`Failed to load workflow data: ${error.message}`);
             }
         }
 
@@ -700,51 +624,12 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/categories`);
                 if (response.ok) {
-                    const categories = await response.json();
+                    const data = await response.json();
+                    const categories = data.categories || [];
                     populateCategories(categories);
                 }
             } catch (error) {
                 console.error('Failed to load categories:', error);
-            }
-        }
-
-        async function searchWorkflows(query) {
-            if (!apiConnected) {
-                filterWorkflows();
-                return;
-            }
-
-            try {
-                const params = new URLSearchParams();
-                if (query) params.append('q', query);
-                
-                const triggerFilter = document.getElementById('triggerFilter').value;
-                const complexityFilter = document.getElementById('complexityFilter').value;
-                
-                if (triggerFilter) params.append('trigger', triggerFilter);
-                if (complexityFilter) params.append('complexity', complexityFilter);
-
-                const response = await fetch(`${API_BASE_URL}/workflows?${params}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    allWorkflows = data.map(workflow => ({
-                        id: workflow.id,
-                        filename: workflow.filename,
-                        name: workflow.name || transformFilename(workflow.filename),
-                        description: workflow.description || 'No description available',
-                        active: workflow.active,
-                        trigger_type: workflow.trigger_type || 'Manual',
-                        complexity: workflow.complexity || determineComplexity(workflow.node_count),
-                        node_count: workflow.node_count || 0,
-                        integrations: workflow.integrations ? JSON.parse(workflow.integrations) : [],
-                        category: inferCategory(workflow.integrations)
-                    }));
-                    filteredWorkflows = [...allWorkflows];
-                    renderWorkflows();
-                }
-            } catch (error) {
-                console.error('Search failed:', error);
-                filterWorkflows(); // Fallback to local filtering
             }
         }
 
@@ -761,30 +646,17 @@
                     statusElement.innerHTML = '🟡 Connecting to API...';
                     break;
                 case 'disconnected':
-                    statusElement.innerHTML = '🔴 API Disconnected - Using Demo Mode';
-                    break;
-                case 'demo':
-                    statusElement.innerHTML = '🟡 Demo Mode - Sample Data';
+                    statusElement.innerHTML = '🔴 API Disconnected';
                     break;
             }
         }
 
-        function hideSetupInstructions() {
-            document.getElementById('setupInstructions').style.display = 'none';
-        }
-
-        function showSetupInstructions() {
-            document.getElementById('setupInstructions').style.display = 'block';
-        }
-
         function transformFilename(filename) {
-            // Transform filenames like "0001_Slack_Telegram_Notification_Webhook.json" 
-            // to "Slack Telegram Notification"
             return filename
-                .replace(/^\d+_/, '') // Remove leading numbers and underscore
-                .replace(/\.(json|txt)$/, '') // Remove file extension
-                .replace(/_/g, ' ') // Replace underscores with spaces
-                .replace(/\b\w/g, l => l.toUpperCase()); // Title case
+                .replace(/^\d+_/, '')
+                .replace(/\.(json|txt)$/, '')
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase());
         }
 
         function determineComplexity(nodeCount) {
@@ -833,58 +705,282 @@
                 <div class="no-results">
                     <h3>Error</h3>
                     <p>${message}</p>
+                    <button class="btn btn-primary" onclick="connectToAPI()" style="margin-top: 15px;">
+                        🔄 Try Again
+                    </button>
                 </div>
             `;
         }
 
-        // Demo Data Functions (from previous version)
-        function generateSampleWorkflows() {
-            const categories = ['Data Integration', 'Communication', 'Analytics', 'E-commerce', 'Social Media', 'Content Management', 'DevOps', 'Finance'];
-            const triggers = ['Webhook', 'Manual', 'Scheduled', 'Complex'];
-            const integrations = ['Slack', 'Gmail', 'Google Sheets', 'Notion', 'Discord', 'Airtable', 'Telegram', 'OpenAI', 'GitHub', 'Stripe', 'Shopify', 'WordPress', 'MySQL', 'PostgreSQL', 'AWS', 'Azure'];
+        function updateStats(apiStats = null) {
+            let stats;
             
-            const sampleWorkflows = [];
-            
-            for (let i = 1; i <= 50; i++) {
-                const nodeCount = Math.floor(Math.random() * 15) + 1;
-                const complexity = nodeCount <= 3 ? 'Simple' : nodeCount <= 8 ? 'Medium' : 'Complex';
-                const workflowIntegrations = integrations.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 5) + 1);
-                const category = categories[Math.floor(Math.random() * categories.length)];
-                
-                sampleWorkflows.push({
-                    id: i,
-                    filename: `${i.toString().padStart(4, '0')}_${workflowIntegrations[0]}_${category.replace(' ', '_')}_workflow.json`,
-                    name: `${category} with ${workflowIntegrations[0]}`,
-                    description: `Automate ${category.toLowerCase()} processes using ${workflowIntegrations.join(', ')}. This workflow streamlines operations and improves efficiency by connecting multiple services seamlessly.`,
-                    active: Math.random() > 0.3,
-                    trigger_type: triggers[Math.floor(Math.random() * triggers.length)],
-                    complexity: complexity,
-                    node_count: nodeCount,
-                    integrations: workflowIntegrations,
-                    category: category,
-                    created_at: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-                    author: `user${Math.floor(Math.random() * 100)}`,
-                    downloads: Math.floor(Math.random() * 1000),
-                    rating: (Math.random() * 2 + 3).toFixed(1)
-                });
+            if (apiStats) {
+                stats = {
+                    total: apiStats.total,
+                    active: apiStats.active,
+                    inactive: apiStats.inactive,
+                    totalNodes: apiStats.total_nodes,
+                    uniqueIntegrations: apiStats.unique_integrations,
+                };
+            } else {
+                stats = {
+                    total: allWorkflows.length,
+                    active: allWorkflows.filter(w => w.active).length,
+                    inactive: allWorkflows.filter(w => !w.active).length,
+                    totalNodes: allWorkflows.reduce((sum, w) => sum + w.node_count, 0),
+                    uniqueIntegrations: [...new Set(allWorkflows.flatMap(w => w.integrations))].length,
+                };
             }
-            
-            return sampleWorkflows;
+
+            const statsContainer = document.getElementById('statsContainer');
+            statsContainer.innerHTML = `
+                <div class="stat-card">
+                    <span class="stat-number">${stats.total}</span>
+                    <div class="stat-label">Total Workflows</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">${stats.active}</span>
+                    <div class="stat-label">Active Workflows</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">${stats.totalNodes || stats.total_nodes || 0}</span>
+                    <div class="stat-label">Total Nodes</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">${stats.uniqueIntegrations || stats.unique_integrations || 0}</span>
+                    <div class="stat-label">Integrations</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">${filteredWorkflows.length}</span>
+                    <div class="stat-label">Showing</div>
+                </div>
+            `;
         }
 
-        function loadDemoData() {
-            updateApiStatus('demo');
-            showSetupInstructions();
-            allWorkflows = generateSampleWorkflows();
-            filteredWorkflows = [...allWorkflows];
+        function populateCategories(categories) {
+            const categoryFilter = document.getElementById('categoryFilter');
+            categoryFilter.innerHTML = '<option value="">All Categories</option>';
+            
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            });
+        }
+
+        function renderWorkflows() {
+            const container = document.getElementById('workflowsContainer');
+            
+            if (filteredWorkflows.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <h3>No workflows found</h3>
+                        <p>Try adjusting your search criteria or filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const workflowsGrid = document.createElement('div');
+            workflowsGrid.className = 'workflows-grid';
+
+            filteredWorkflows.slice(0, 50).forEach(workflow => { // Limit to first 50 for performance
+                const card = document.createElement('div');
+                card.className = 'workflow-card';
+                card.innerHTML = `
+                    <div class="workflow-header">
+                        <div>
+                            <h3 class="workflow-title">${workflow.name}</h3>
+                            <div class="workflow-id">#${workflow.id}</div>
+                        </div>
+                    </div>
+                    
+                    <p class="workflow-description">${workflow.description}</p>
+                    
+                    <div class="workflow-meta">
+                        <span class="meta-badge nodes">📊 ${workflow.node_count} nodes</span>
+                        <span class="meta-badge trigger">⚡ ${workflow.trigger_type}</span>
+                        <span class="meta-badge ${workflow.active ? 'active' : 'inactive'}">
+                            ${workflow.active ? '✅ Active' : '⏸️ Inactive'}
+                        </span>
+                    </div>
+
+                    <div class="integrations">
+                        <div class="integrations-label">Integrations:</div>
+                        <div class="integration-tags">
+                            ${workflow.integrations.map(integration => 
+                                `<span class="integration-tag">${integration}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+
+                    <div class="workflow-actions">
+                        <button class="btn btn-primary" onclick="viewWorkflow(${workflow.id})">
+                            👁️ View Details
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadWorkflow('${workflow.filename}')">
+                            📥 Download
+                        </button>
+                    </div>
+                `;
+                workflowsGrid.appendChild(card);
+            });
+
+            container.innerHTML = '';
+            container.appendChild(workflowsGrid);
+            
             updateStats();
+        }
+
+        function filterWorkflows() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const triggerFilter = document.getElementById('triggerFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const complexityFilter = document.getElementById('complexityFilter').value;
+
+            filteredWorkflows = allWorkflows.filter(workflow => {
+                const matchesSearch = searchTerm === '' || 
+                    workflow.name.toLowerCase().includes(searchTerm) ||
+                    workflow.description.toLowerCase().includes(searchTerm) ||
+                    workflow.integrations.some(integration => 
+                        integration.toLowerCase().includes(searchTerm)
+                    );
+
+                const matchesCategory = categoryFilter === '' || workflow.category === categoryFilter;
+                const matchesTrigger = triggerFilter === '' || workflow.trigger_type === triggerFilter;
+                const matchesStatus = statusFilter === '' || 
+                    (statusFilter === 'active' && workflow.active) ||
+                    (statusFilter === 'inactive' && !workflow.active);
+                const matchesComplexity = complexityFilter === '' || workflow.complexity === complexityFilter;
+
+                return matchesSearch && matchesCategory && matchesTrigger && matchesStatus && matchesComplexity;
+            });
+
             renderWorkflows();
-            populateFilters();
+        }
+
+        function viewWorkflow(id) {
+            const workflow = allWorkflows.find(w => w.id === id);
+            const modal = document.getElementById('workflowModal');
+            const modalContent = document.getElementById('modalContent');
+
+            modalContent.innerHTML = `
+                <h2>${workflow.name}</h2>
+                <p><strong>ID:</strong> ${workflow.id}</p>
+                <p><strong>Filename:</strong> ${workflow.filename}</p>
+                <p><strong>Category:</strong> ${workflow.category}</p>
+                <p><strong>Description:</strong> ${workflow.description}</p>
+                <p><strong>Status:</strong> ${workflow.active ? 'Active' : 'Inactive'}</p>
+                <p><strong>Trigger Type:</strong> ${workflow.trigger_type}</p>
+                <p><strong>Complexity:</strong> ${workflow.complexity}</p>
+                <p><strong>Node Count:</strong> ${workflow.node_count}</p>
+                ${workflow.analyzed_at ? `<p><strong>Last Analyzed:</strong> ${new Date(workflow.analyzed_at).toLocaleString()}</p>` : ''}
+                
+                <h3>Integrations:</h3>
+                <div class="integration-tags">
+                    ${workflow.integrations.map(integration => 
+                        `<span class="integration-tag">${integration}</span>`
+                    ).join('')}
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button class="btn btn-primary" onclick="downloadWorkflow('${workflow.filename}')">
+                        📥 Download JSON
+                    </button>
+                    <button class="btn btn-secondary" onclick="copyToClipboard('${workflow.filename}')">
+                        📋 Copy Filename
+                    </button>
+                    <button class="btn btn-secondary" onclick="openInGitHub('${workflow.filename}')">
+                        🔗 View on GitHub
+                    </button>
+                </div>
+            `;
+
+            modal.style.display = 'block';
+        }
+
+        async function downloadWorkflow(filename) {
+            if (apiConnected) {
+                try {
+                    // Try to download from API
+                    const response = await fetch(`${API_BASE_URL}/workflows/${filename}/download`);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Download failed:', error);
+                }
+            }
+
+            // Fallback: show error
+            alert('Download failed. Please try again or check the GitHub repository.');
+        }
+
+        function openInGitHub(filename) {
+            const url = `https://github.com/Zie619/n8n-workflows/blob/main/${filename}`;
+            window.open(url, '_blank');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Filename copied to clipboard!');
+            });
         }
 
         function refreshData() {
             if (apiConnected) {
                 loadRealData();
             } else {
-                loadDemoData();
+                connectToAPI();
             }
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            // Debounce search
+            clearTimeout(window.searchTimeout);
+            window.searchTimeout = setTimeout(() => {
+                filterWorkflows();
+            }, 300);
+        });
+
+        document.getElementById('categoryFilter').addEventListener('change', filterWorkflows);
+        document.getElementById('triggerFilter').addEventListener('change', filterWorkflows);
+        document.getElementById('statusFilter').addEventListener('change', filterWorkflows);
+        document.getElementById('complexityFilter').addEventListener('change', filterWorkflows);
+
+        // Modal close functionality
+        document.querySelector('.modal-close').onclick = function() {
+            document.getElementById('workflowModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('workflowModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('App initialized, attempting to connect to API...');
+            // Auto-connect on page load
+            setTimeout(() => {
+                connectToAPI();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
