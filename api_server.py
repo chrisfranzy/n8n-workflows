@@ -25,6 +25,15 @@ app = FastAPI(
     description="Fast API for browsing and searching workflow documentation",
     version="2.0.0"
 )
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="."), name="static")
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("index.html")
 
 # Add middleware for performance
 app.add_middleware(GZipMiddleware, minimum_size=1000)
