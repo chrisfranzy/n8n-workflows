@@ -570,6 +570,88 @@
             }
         }
 
+        function getCategoryFromIntegrations(integrations) {
+    if (!integrations || integrations.length === 0) return 'Uncategorized';
+    
+    // Enhanced category mapping based on integrations
+    const categoryMap = {
+        // AI & ML
+        'OpenAI': 'AI Agent Development',
+        'ChatGPT': 'AI Agent Development',
+        'Anthropic': 'AI Agent Development',
+        'GPT': 'AI Agent Development',
+        
+        // Communication
+        'Slack': 'Communication & Messaging',
+        'Discord': 'Communication & Messaging',
+        'Telegram': 'Communication & Messaging',
+        'WhatsApp': 'Communication & Messaging',
+        'Gmail': 'Communication & Messaging',
+        'Email': 'Communication & Messaging',
+        
+        // Data Processing
+        'Google Sheets': 'Data Processing & Analysis',
+        'Excel': 'Data Processing & Analysis',
+        'CSV': 'Data Processing & Analysis',
+        'Database': 'Data Processing & Analysis',
+        'MySQL': 'Data Processing & Analysis',
+        'PostgreSQL': 'Data Processing & Analysis',
+        'MongoDB': 'Data Processing & Analysis',
+        
+        // CRM & Sales
+        'Salesforce': 'CRM & Sales',
+        'HubSpot': 'CRM & Sales',
+        'Pipedrive': 'CRM & Sales',
+        'Zendesk': 'CRM & Sales',
+        
+        // Cloud Storage
+        'Google Drive': 'Cloud Storage & File Management',
+        'Dropbox': 'Cloud Storage & File Management',
+        'OneDrive': 'Cloud Storage & File Management',
+        'AWS S3': 'Cloud Storage & File Management',
+        
+        // E-commerce
+        'Shopify': 'E-commerce & Retail',
+        'WooCommerce': 'E-commerce & Retail',
+        'Stripe': 'Financial & Accounting',
+        'PayPal': 'Financial & Accounting',
+        
+        // Project Management
+        'Notion': 'Project Management',
+        'Trello': 'Project Management',
+        'Asana': 'Project Management',
+        'Monday': 'Project Management',
+        
+        // Marketing
+        'Mailchimp': 'Marketing & Advertising Automation',
+        'Facebook': 'Social Media Management',
+        'Twitter': 'Social Media Management',
+        'Instagram': 'Social Media Management',
+        'LinkedIn': 'Social Media Management',
+        
+        // DevOps
+        'GitHub': 'Technical Infrastructure & DevOps',
+        'GitLab': 'Technical Infrastructure & DevOps',
+        'Docker': 'Technical Infrastructure & DevOps',
+        'AWS': 'Technical Infrastructure & DevOps',
+        
+        // Web Scraping
+        'HTTP Request': 'Web Scraping & Data Extraction',
+        'Webhook': 'Web Scraping & Data Extraction'
+    };
+
+    // Find the best matching category
+    for (const integration of integrations) {
+        for (const [service, category] of Object.entries(categoryMap)) {
+            if (integration.toLowerCase().includes(service.toLowerCase())) {
+                return category;
+            }
+        }
+    }
+    
+    return 'Business Process Automation'; // Default for workflows with integrations
+}
+        
         async function loadRealData() {
     try {
         showLoading();
@@ -640,7 +722,7 @@
             complexity: workflow.complexity || determineComplexity(workflow.node_count || 0),
             node_count: workflow.node_count || 0,
             integrations: parseIntegrations(workflow.integrations),
-            category: workflow.category || 'Uncategorized',
+            category: getCategoryFromIntegrations(parseIntegrations(workflow.integrations)) || 'Uncategorized',
             analyzed_at: workflow.analyzed_at
         }));
 
