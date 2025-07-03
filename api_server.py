@@ -129,6 +129,7 @@ async def health_check():
     return {"status": "healthy", "message": "N8N Workflow API is running"}
 
 @app.get("/api/stats", response_model=StatsResponse)
+@app.head("/api/stats", response_model=StatsResponse)
 async def get_stats():
     """Get workflow database statistics."""
     try:
