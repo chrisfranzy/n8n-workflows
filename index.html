@@ -571,55 +571,69 @@
         }
 
         async function loadRealData() {
-            try {
-                showLoading();
-                
-                console.log('Loading workflows from API...');
-                
-                // Load workflows and stats
-                const [workflowsResponse, statsResponse] = await Promise.all([
-                    fetch(`${API_BASE_URL}/workflows?per_page=100`),
-                    fetch(`${API_BASE_URL}/stats`)
-                ]);
+    try {
+        showLoading();
+        
+        console.log('Loading ALL workflows from API...');
+        
+        // Load all workflows with higher limit
+        const [workflowsResponse, statsResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/workflows?per_page=2100`), // Request all workflows
+            fetch(`${API_BASE_URL}/stats`)
+        ]);
 
-                if (!workflowsResponse.ok || !statsResponse.ok) {
-                    throw new Error('Failed to fetch data from API');
-                }
-
-                const workflowsData = await workflowsResponse.json();
-                const statsData = await statsResponse.json();
-
-                console.log('Received workflows:', workflowsData.workflows?.length || 0);
-                console.log('Stats:', statsData);
-
-                // Transform API data to our format
-                allWorkflows = (workflowsData.workflows || []).map(workflow => ({
-                    id: workflow.id,
-                    filename: workflow.filename,
-                    name: workflow.name || transformFilename(workflow.filename),
-                    description: workflow.description || 'No description available',
-                    active: workflow.active,
-                    trigger_type: workflow.trigger_type || 'Manual',
-                    complexity: workflow.complexity || determineComplexity(workflow.node_count),
-                    node_count: workflow.node_count || 0,
-                    integrations: Array.isArray(workflow.integrations) ? workflow.integrations : 
-                                 (typeof workflow.integrations === 'string' ? JSON.parse(workflow.integrations || '[]') : []),
-                    category: inferCategory(workflow.integrations),
-                    analyzed_at: workflow.analyzed_at
-                }));
-
-                filteredWorkflows = [...allWorkflows];
-                updateStats(statsData);
-                renderWorkflows();
-                
-                console.log('Successfully loaded', allWorkflows.length, 'workflows');
-                
-            } catch (error) {
-                console.error('Failed to load real data:', error);
-                showError(`Failed to load workflow data: ${error.message}`);
-            }
+        if (!workflowsResponse.ok || !statsResponse.ok) {
+            throw new Error('Failed to fetch data from API');
         }
 
+        const workflowsData = await workflowsResponse.json();
+        const statsData = await statsResponse.json();
+
+        console.log('Received workflows:', workflowsData.workflows?.length || workflowsData.length || 0);
+        console.log('Stats:', statsData);
+
+        // Handle different API response formats
+        const workflows = workflowsData.workflows || workflowsData || [];
+
+        // Transform API data to our format
+        allWorkflows = workflows.map(workflow => ({
+            id: workflow.id || Math.random(),
+            filename: workflow.filename || 'unknown.json',
+            name: workflow.name || transformFilename(workflow.filename || 'Unknown Workflow'),
+            description: workflow.description || 'No description available',
+            active: Boolean(workflow.active),
+            trigger_type: workflow.trigger_type || 'Manual',
+            complexity: workflow.complexity || determineComplexity(workflow.node_count || 0),
+            node_count: workflow.node_count || 0,
+            integrations: parseIntegrations(workflow.integrations),
+            category: inferCategory(parseIntegrations(workflow.integrations)),
+            analyzed_at: workflow.analyzed_at
+        }));
+
+        filteredWorkflows = [...allWorkflows];
+        updateStats(statsData);
+        renderWorkflows();
+        
+        console.log('Successfully loaded', allWorkflows.length, 'workflows');
+        
+    } catch (error) {
+        console.error('Failed to load real data:', error);
+        showError(`Failed to load workflow data: ${error.message}`);
+    }
+}
+
+// Add this helper function
+function parseIntegrations(integrations) {
+    if (Array.isArray(integrations)) return integrations;
+    if (typeof integrations === 'string') {
+        try {
+            return JSON.parse(integrations);
+        } catch {
+            return [integrations];
+        }
+    }
+    return [];
+}
         async function loadCategories() {
             try {
                 const response = await fetch(`${API_BASE_URL}/categories`);
